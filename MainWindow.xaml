@@ -32,7 +32,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="220"/>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="260"/>
+                <ColumnDefinition Width="320"/>
             </Grid.ColumnDefinitions>
 
             <!-- SOL PANEL: Sürücüler -->
@@ -58,6 +58,12 @@
                         <Button Content="💾  Disk İmajı Oluştur" Style="{StaticResource SecondaryButton}"
                                 Command="{Binding CreateImageCommand}"
                                 ToolTip="Sürücünün tamamını .img dosyasına yedekle"/>
+                        <Button Content="🗂  Bölüm Analizi" Style="{StaticResource SecondaryButton}"
+                                Command="{Binding AnalyzePartitionsCommand}"
+                                ToolTip="Fiziksel diskin MBR/GPT bölüm tablosunu oku ve kayıp bölümleri ara"/>
+                        <Button Content="📊  Rapor Dışa Aktar" Style="{StaticResource SecondaryButton}"
+                                Command="{Binding ExportReportCommand}"
+                                ToolTip="Tarama sonuçlarını HTML veya CSV olarak kaydet"/>
                     </StackPanel>
 
                     <ListBox ItemsSource="{Binding Drives}" SelectedItem="{Binding SelectedDrive, Mode=TwoWay}"
@@ -124,6 +130,34 @@
                         <CheckBox Content="Diğer" IsChecked="{Binding CarverSettings.Other}"/>
                     </WrapPanel>
                 </GroupBox>
+
+                <!-- Bölüm analizi sonuçları -->
+                <Border DockPanel.Dock="Top" Background="{StaticResource PanelBrush}"
+                        BorderBrush="{StaticResource AccentBrush}" BorderThickness="1" CornerRadius="6"
+                        Padding="8" Margin="0,0,0,6"
+                        Visibility="{Binding ShowPartitionPanel, Converter={StaticResource BoolToVis}}">
+                    <DockPanel>
+                        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                            <Button DockPanel.Dock="Right" Content="✖ Kapat" Padding="8,2"
+                                    Style="{StaticResource SecondaryButton}" Command="{Binding ClosePartitionPanelCommand}"/>
+                            <TextBlock Text="🗂 Bölüm Analizi" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="{Binding PartitionSummary}" TextWrapping="Wrap"
+                                   Foreground="{StaticResource MutedBrush}" Margin="0,0,0,6"/>
+                        <DataGrid ItemsSource="{Binding Partitions}" IsReadOnly="True" MaxHeight="200">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="#"            Binding="{Binding Index}"      Width="35"/>
+                                <DataGridTextColumn Header="Şema"         Binding="{Binding Scheme}"     Width="60"/>
+                                <DataGridTextColumn Header="Tür"          Binding="{Binding TypeName}"   Width="*"/>
+                                <DataGridTextColumn Header="Dosya Sistemi" Binding="{Binding FileSystem}" Width="95"/>
+                                <DataGridTextColumn Header="Ad"           Binding="{Binding Name}"       Width="110"/>
+                                <DataGridTextColumn Header="Başlangıç LBA" Binding="{Binding StartLba}"  Width="105"/>
+                                <DataGridTextColumn Header="Boyut"        Binding="{Binding SizeText}"   Width="85" SortMemberPath="Size"/>
+                                <DataGridTextColumn Header="Durum"        Binding="{Binding StatusText}" Width="170"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                </Border>
 
                 <!-- Dosya listesi DataGrid -->
                 <DataGrid ItemsSource="{Binding FilteredFiles}"
@@ -203,10 +237,26 @@
                                    TextWrapping="Wrap" Margin="0,0,0,8"
                                    Foreground="{StaticResource AccentBrush}"/>
 
+                        <!-- Resim önizleme (diskten okunan gerçek küçük resim) -->
+                        <Border Background="#141420" CornerRadius="4" Padding="4" Margin="0,0,0,8">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Type}" Value="{x:Static models:PreviewType.Image}">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Image Source="{Binding Content, Converter={StaticResource BitmapToImg}}"
+                                   MaxHeight="220" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+                        </Border>
+
                         <!-- Metin önizleme -->
                         <TextBox Text="{Binding Content, Mode=OneWay}"
-                                 IsReadOnly="True" TextWrapping="Wrap"
-                                 MaxHeight="160" VerticalScrollBarVisibility="Auto"
+                                 IsReadOnly="True" TextWrapping="NoWrap"
+                                 MaxHeight="300" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
                                  FontFamily="Consolas" FontSize="11"
                                  Margin="0,0,0,8">
                             <TextBox.Style>

@@ -131,6 +131,75 @@ public static class WinApiHelper
 
     public static NTFS_VOLUME_DATA_BUFFER GetNtfsVolumeData(SafeFileHandle h) => IoControl<NTFS_VOLUME_DATA_BUFFER>(h, FSCTL_GET_NTFS_VOLUME_DATA);
 
+    public const uint IOCTL_DISK_GET_DRIVE_GEOMETRY = 0x00070000;
+    public const uint IOCTL_DISK_GET_LENGTH_INFO = 0x0007405C;
+    public const uint IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS = 0x00560000;
+
+    /// <summary>\\.\PhysicalDriveN fiziksel disk tanıtıcısı açar.</summary>
+    public static SafeFileHandle OpenPhysicalDrive(int diskNumber)
+    {
+        string path = $@"\\.\PhysicalDrive{diskNumber}";
+        var handle = CreateFile(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
+        if (handle.IsInvalid)
+        {
+            int err = Marshal.GetLastWin32Error();
+            if (err == ERROR_ACCESS_DENIED)
+                throw new UnauthorizedAccessException("Yönetici izni gerekiyor. Uygulamayı yönetici olarak çalıştırın.");
+            throw new Win32Exception(err, $"Fiziksel disk açılamadı: {path}");
+        }
+        return handle;
+    }
+
+    /// <summary>Birim veya diskin bayt cinsinden uzunluğu (IOCTL_DISK_GET_LENGTH_INFO).</summary>
+    public static long GetLength(SafeFileHandle h) => IoControl<long>(h, IOCTL_DISK_GET_LENGTH_INFO);
+
+    /// <summary>Diskin sektör boyutu (bilinemezse 512).</summary>
+    public static int GetBytesPerSector(SafeFileHandle h)
+    {
+        IntPtr buf = Marshal.AllocHGlobal(24);
+        try
+        {
+            if (!DeviceIoControl(h, IOCTL_DISK_GET_DRIVE_GEOMETRY, IntPtr.Zero, 0, buf, 24, out _, IntPtr.Zero)) return 512;
+            int bps = Marshal.ReadInt32(buf, 20);
+            return bps is 512 or 1024 or 2048 or 4096 ? bps : 512;
+        }
+        finally { Marshal.FreeHGlobal(buf); }
+    }
+
+    /// <summary>Sürücü harfinin bulunduğu fiziksel disk numarası; bulunamazsa -1.</summary>
+    public static int GetDiskNumberForVolume(string driveLetter)
+    {
+        try
+        {
+            using var h = OpenVolume(driveLetter);
+            const int size = 256;
+            IntPtr buf = Marshal.AllocHGlobal(size);
+            try
+            {
+                if (!DeviceIoControl(h, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, IntPtr.Zero, 0, buf, size, out _, IntPtr.Zero)) return -1;
+                return Marshal.ReadInt32(buf) > 0 ? Marshal.ReadInt32(buf, 8) : -1;
+            }
+            finally { Marshal.FreeHGlobal(buf); }
+        }
+        catch { return -1; }
+    }
+
+    /// <summary>
+    /// Ham aygıtlar yalnızca sektör hizalı ofset/uzunluk kabul eder. Bu metot istenen aralığı
+    /// 4096 bayta hizalayarak okur ve yalnızca istenen bölümü döndürür (aygıt sonunda kısa dönebilir).
+    /// </summary>
+    public static byte[] ReadAligned(SafeFileHandle h, long offset, int length, int align = 4096)
+    {
+        if (length <= 0 || offset < 0) return Array.Empty<byte>();
+        long start = offset - offset % align;
+        long endAligned = (offset + length + align - 1) / align * align;
+        var buf = ReadSectors(h, start, (int)(endAligned - start));
+        int skip = (int)(offset - start);
+        int avail = Math.Max(0, Math.Min(length, buf.Length - skip));
+        if (skip == 0 && avail == buf.Length) return buf;
+        return buf.AsSpan(skip, avail).ToArray();
+    }
+
     /// <summary>Belirtilen bayt ofsetinden (sektör hizalı) okuma yapar.</summary>
     public static byte[] ReadSectors(SafeFileHandle h, long byteOffset, int length)
     {

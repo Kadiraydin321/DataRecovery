@@ -14,7 +14,11 @@ public class MainViewModel : ObservableObject
     private readonly CarverService _carver = new();
     private readonly DiskImageService _imageService = new();
     private readonly PreviewService _previewService = new();
+    private readonly PartitionService _partitionService = new();
     private CancellationTokenSource? _cts;
+    private CancellationTokenSource? _previewCts;
+    private bool _showPartitionPanel;
+    private string _partitionSummary = string.Empty;
 
     private DriveViewModel? _selectedDrive;
     private string _selectedCategory = "Hepsi";
@@ -40,11 +44,14 @@ public class MainViewModel : ObservableObject
         RefreshDrivesCommand = new RelayCommand(LoadDrives, () => !IsScanning);
         CreateImageCommand = new RelayCommand(async () => await CreateImageAsync(), () => SelectedDrive != null && !IsScanning);
         StartCarvingCommand = new RelayCommand(async () => await StartCarvingAsync(), () => SelectedDrive != null && !IsScanning);
+        AnalyzePartitionsCommand = new RelayCommand(async () => await AnalyzePartitionsAsync(), () => !IsScanning);
+        ClosePartitionPanelCommand = new RelayCommand(() => ShowPartitionPanel = false);
+        ExportReportCommand = new RelayCommand(async () => await ExportReportAsync(), () => !IsScanning && ScannedFiles.Count > 0);
         
         LoadDrives();
     }
 
-    public string AppVersion => "v0.2.0 (Faz 2)";
+    public string AppVersion => "v0.3.0 (Faz 3)";
     public ObservableCollection<DriveViewModel> Drives { get; } = new();
     public ObservableCollection<RecoverableFile> ScannedFiles { get; } = new();
     public ObservableCollection<RecoverableFile> FilteredFiles { get; } = new();
@@ -109,6 +116,13 @@ public class MainViewModel : ObservableObject
     public ICommand RefreshDrivesCommand { get; }
     public ICommand CreateImageCommand { get; }
     public ICommand StartCarvingCommand { get; }
+    public ICommand AnalyzePartitionsCommand { get; }
+    public ICommand ClosePartitionPanelCommand { get; }
+    public ICommand ExportReportCommand { get; }
+
+    public ObservableCollection<PartitionInfo> Partitions { get; } = new();
+    public bool ShowPartitionPanel { get => _showPartitionPanel; set => SetProperty(ref _showPartitionPanel, value); }
+    public string PartitionSummary { get => _partitionSummary; set => SetProperty(ref _partitionSummary, value); }
 
     private void LoadDrives()
     {
@@ -167,7 +181,9 @@ public class MainViewModel : ObservableObject
             var files = await _carver.CarveAsync(SelectedDrive.Drive.Letter, CarverSettings, progress, _cts.Token);
             foreach (var f in files.OrderByDescending(f => f.Size)) ScannedFiles.Add(f);
             ApplyFilter();
-            StatusMessage = $"Kazıma tamamlandı: {files.Count} imza eşleşmesi bulundu.";
+            StatusMessage = files.Count == 0 && _carver.LastError != null
+                ? _carver.LastError
+                : $"Kazıma tamamlandı: {files.Count} dosya bulundu (boyutları sonlandırıcı/başlık bilgisinden belirlendi).";
             ScanProgress = 100;
         }
         catch (OperationCanceledException) { StatusMessage = "Kazıma iptal edildi."; }
@@ -245,20 +261,77 @@ public class MainViewModel : ObservableObject
         }
     }
 
-    private void UpdatePreview(RecoverableFile file)
+    private async void UpdatePreview(RecoverableFile file)
     {
-        _ = Task.Run(async () =>
+        _previewCts?.Cancel();
+        var cts = _previewCts = new CancellationTokenSource();
+        if (SelectedDrive == null) { CurrentPreview = new PreviewData { Type = PreviewType.Metadata, Title = "Önizleme için sürücü seçili değil." }; return; }
+        CurrentPreview = new PreviewData { Type = PreviewType.Metadata, Title = $"{file.FileName} — diskten okunuyor..." };
+        try
         {
-            try
-            {
-                if (SelectedDrive != null)
-                {
-                    var preview = await _previewService.GetPreviewAsync(file, SelectedDrive.Drive.Letter, CancellationToken.None);
-                    CurrentPreview = preview;
-                }
-            }
-            catch { CurrentPreview = new PreviewData { Type = PreviewType.NotAvailable, Title = "Hata" }; }
-        });
+            var preview = await _previewService.GetPreviewAsync(file, SelectedDrive.Drive.Letter, cts.Token);
+            if (!cts.IsCancellationRequested) CurrentPreview = preview;
+        }
+        catch (OperationCanceledException) { /* yeni seçim yapıldı */ }
+        catch (Exception ex)
+        {
+            if (!cts.IsCancellationRequested)
+                CurrentPreview = new PreviewData { Type = PreviewType.Metadata, Title = "Önizleme hatası", Metadata = { ex.Message } };
+        }
+    }
+
+    private async Task AnalyzePartitionsAsync()
+    {
+        int disk = SelectedDrive != null ? WinApiHelper.GetDiskNumberForVolume(SelectedDrive.Drive.Letter) : 0;
+        if (disk < 0) disk = 0;
+        _cts = new CancellationTokenSource();
+        IsScanning = true;
+        ScanProgress = 0;
+        Partitions.Clear();
+        ShowPartitionPanel = true;
+        PartitionSummary = $"Fiziksel Disk {disk} analiz ediliyor...";
+        StatusMessage = $"Bölüm analizi: Fiziksel Disk {disk} (MBR/GPT okunuyor, boş alanlarda kayıp bölüm aranıyor)...";
+        var progress = new Progress<int>(p => ScanProgress = p);
+        try
+        {
+            var r = await _partitionService.AnalyzeAsync(disk, true, progress, _cts.Token);
+            foreach (var p in r.Partitions.OrderBy(p => p.StartLba)) Partitions.Add(p);
+            PartitionSummary = r.Summary + (r.Warnings.Count > 0 ? "\n⚠ " + string.Join("\n⚠ ", r.Warnings) : "");
+            StatusMessage = $"Bölüm analizi tamamlandı: {r.Partitions.Count(p => !p.IsLost)} bölüm, {r.Partitions.Count(p => p.IsLost)} kayıp bölüm adayı.";
+            ScanProgress = 100;
+        }
+        catch (OperationCanceledException) { StatusMessage = "Bölüm analizi iptal edildi."; PartitionSummary = "İptal edildi."; }
+        catch (UnauthorizedAccessException) { StatusMessage = PartitionSummary = "Fiziksel diske erişim için yönetici izni gerekiyor."; }
+        catch (Exception ex) { StatusMessage = PartitionSummary = $"Bölüm analizi hatası: {ex.Message}"; }
+        finally
+        {
+            IsScanning = false;
+            _cts?.Dispose();
+            _cts = null;
+        }
+    }
+
+    private async Task ExportReportAsync()
+    {
+        var files = (FilteredFiles.Count > 0 ? FilteredFiles : ScannedFiles).ToList();
+        if (files.Count == 0) { StatusMessage = "Dışa aktarılacak sonuç yok. Önce tarama yapın."; return; }
+        var dlg = new SaveFileDialog
+        {
+            Title = "Raporu Dışa Aktar",
+            Filter = "HTML Raporu (*.html)|*.html|CSV - Excel (*.csv)|*.csv",
+            FileName = $"kurtarma_raporu_{DateTime.Now:yyyyMMdd_HHmm}"
+        };
+        if (dlg.ShowDialog() != true) return;
+        string path = dlg.FileName;
+        if (string.IsNullOrEmpty(Path.GetExtension(path))) path += dlg.FilterIndex == 2 ? ".csv" : ".html";
+        try
+        {
+            string drive = SelectedDrive?.Drive.DisplayName ?? "-";
+            await ReportService.ExportAsync(path, files, drive, AppVersion);
+            StatusMessage = $"Rapor kaydedildi ({files.Count} dosya): {path}";
+        }
+        catch (UnauthorizedAccessException) { StatusMessage = "Rapor kaydedilemedi: klasöre yazma izni yok."; }
+        catch (Exception ex) { StatusMessage = $"Rapor kaydedilemedi: {ex.Message}"; }
     }
 
     private void BrowseDestination()
