@@ -1,4 +1,4 @@
-# 🔍 Veri Kurtarma — v0.3.0 (Faz 3)
+# 🔍 Veri Kurtarma — v0.3.1 (Faz 3 + Rust Çekirdeği)
 
 Windows için C# + WPF (.NET 8) ile geliştirilen, koyu temalı, Türkçe arayüzlü silinmiş dosya kurtarma aracı.
 
@@ -17,6 +17,7 @@ Windows için C# + WPF (.NET 8) ile geliştirilen, koyu temalı, Türkçe arayü
 | **Kurtarma** | NTFS, FAT32 ve kazınmış dosyalar seçilen klasöre yazılır. Hedef, taranan sürücüyle aynıysa işlem reddedilir. |
 | **Bölüm analizi** | Fiziksel diskin MBR/GPT tablosunu (genişletilmiş bölümler dahil) listeler; ayrılmamış alanlarda NTFS/FAT32 önyükleme sektörü arayarak **kayıp bölüm** adaylarını gösterir. |
 | **Disk imajı** | Sürücünün ham kopyasını `.img` dosyasına alır. |
+| **Rust çekirdeği** | `rust/recovery_engine` (cdylib) imza taramasını ve MBR/GPT ayrıştırmasını yerel kodda yapar. `native\x64\recovery_engine.dll` bulunursa otomatik kullanılır, bulunmazsa saf C# motoru devreye girer. Üst barda hangi motorun etkin olduğu yazar. |
 | **Rapor dışa aktarma** | Sonuçları koyu temalı **HTML** veya Excel uyumlu **CSV** (UTF-8 BOM, `;` ayırıcı) olarak kaydeder. |
 
 ## Windows'ta çalıştırma
@@ -45,6 +46,27 @@ Ham disk erişimi (`\\.\C:`, `\\.\PhysicalDrive0`) için yönetici izni gerekir.
 `requireAdministrator` istediği için Windows açılışta UAC onayı sorar. Onay verilmezse tarama
 "Yönetici izni gerekiyor" mesajıyla başarısız olur.
 
+## Rust çekirdeği (recovery_engine)
+
+Depoda hazır derlenmiş `native/x64/recovery_engine.dll` (x86_64-pc-windows-gnu, statik CRT) bulunur;
+`dotnet build`/`publish` bunu çıktı klasöründe **`native\x64\recovery_engine.dll`** konumuna kopyalar
+(yani `DataRecoveryApp.exe` ile aynı klasörün altında `native\x64\`). DLL yoksa build yine başarılı olur.
+
+Dışa aktarılan C fonksiyonları: `re_version`, `re_scan_signatures`, `re_cancel_scan`, `re_scan_progress`,
+`re_parse_partitions`, `re_parse_partitions_alloc`, `re_read_sectors`, `re_free_string`
+(ayrıntılar: `docs/RUST_CORE_PLAN.md`).
+
+DLL'i yeniden derlemek için (Linux/WSL):
+```bash
+rustup target add x86_64-pc-windows-gnu
+sudo apt-get install -y gcc-mingw-w64-x86-64
+cd rust/recovery_engine
+cargo test                                              # birim testleri (yerel)
+cargo build --target x86_64-pc-windows-gnu --release
+cp target/x86_64-pc-windows-gnu/release/recovery_engine.dll ../../native/x64/
+```
+Windows'ta doğrudan MSVC ile: `cargo build --release` → `target\release\recovery_engine.dll` dosyasını `native\x64\` içine kopyalayın.
+
 ## Kullanım ipuçları
 1. Veri kaybı fark edilir edilmez o sürücüye **yazmayı bırakın**.
 2. Kurtarılan dosyaları **başka bir sürücüye** kaydedin.
@@ -58,6 +80,7 @@ Ham disk erişimi (`\\.\C:`, `\\.\PhysicalDrive0`) için yönetici izni gerekir.
 - Kazıma parçalanmış dosyaları birleştiremez; PDF'te ilk `%%EOF`'ta durulur (artımlı güncellemeli PDF'ler kısa kesilebilir); TIFF/RAR için boyut tahminidir.
 - Kayıp bölüm araması yalnızca 1 MiB hizalı konumlarda (ve eski 63. sektörde) yapılır; çok büyük boşluklarda tarama sınırlıdır. Bulunan bölümler yalnızca **listelenir**, bölüm tablosuna yazılmaz.
 - Kurtarılabilirlik yüzdeleri sezgisel tahminlerdir.
+- Rust çekirdeği yalnızca Linux'ta birim testleriyle doğrulandı ve Windows için çapraz derlendi; DLL'in Windows'ta yüklenmesi, P/Invoke çağrıları ve ham aygıt (`\\.\E:`, `\\.\PhysicalDriveN`) okumaları **gerçek Windows'ta test edilmedi**. Rust bölüm ayrıştırıcısı MBR'de 512 baytlık sektör varsayar; kayıp bölüm araması C# tarafında kalır.
 
 ## Proje yapısı
 ```
@@ -67,5 +90,8 @@ Services/    NtfsScanner, Fat32Scanner, CarverService, FileDataReader, RecoveryS
 ViewModels/  MainViewModel, DriveViewModel
 Helpers/     WinApiHelper (P/Invoke), FileSizeHelper, ObservableObject, RelayCommand
 Converters/  WPF değer dönüştürücüleri
-docs/        RUST_CORE_PLAN.md (isteğe bağlı gelecek Rust çekirdeği planı)
+Services/    RustBridge (Rust çekirdeği P/Invoke katmanı)
+rust/        recovery_engine — Rust çekirdeği (lib.rs, scanner.rs, partition.rs, reader.rs)
+native/x64/  recovery_engine.dll (çapraz derlenmiş)
+docs/        RUST_CORE_PLAN.md (Rust çekirdeği mimarisi ve C ABI)
 ```

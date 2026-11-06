@@ -24,6 +24,8 @@
                 <TextBlock Text="🔍 Veri Kurtarma" FontSize="20" FontWeight="SemiBold"/>
                 <TextBlock Text="{Binding AppVersion}" Foreground="{StaticResource MutedBrush}"
                            Margin="10,0,0,2" VerticalAlignment="Bottom"/>
+                <TextBlock Text="{Binding EngineStatus}" Foreground="{StaticResource MutedBrush}"
+                           Margin="14,0,0,2" VerticalAlignment="Bottom" FontSize="11"/>
             </StackPanel>
         </Border>
 

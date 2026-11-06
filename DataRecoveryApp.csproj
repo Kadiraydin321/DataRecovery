@@ -12,14 +12,21 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- Linux/macOS üzerinde de derlenebilmesi için -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
-    <Version>0.1.0</Version>
+    <Version>0.3.1</Version>
     <Product>Veri Kurtarma</Product>
-    <Description>Silinen dosyaları kurtarma aracı (Faz 1)</Description>
+    <Description>Silinen dosyaları kurtarma aracı (Faz 3 + Rust çekirdeği)</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="System.Drawing.Common" Version="10.0.14" />
     <PackageReference Include="System.Management" Version="8.0.0" />
+  </ItemGroup>
+
+  <!-- Rust çekirdeği: rust/recovery_engine'den derlenen DLL. Yoksa build hata vermez, uygulama C# motoruna döner. -->
+  <ItemGroup>
+    <Content Include="native\x64\recovery_engine.dll" Condition="Exists('native\x64\recovery_engine.dll')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

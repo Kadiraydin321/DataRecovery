@@ -51,7 +51,8 @@ public class MainViewModel : ObservableObject
         LoadDrives();
     }
 
-    public string AppVersion => "v0.3.0 (Faz 3)";
+    public string AppVersion => "v0.3.1 (Faz 3 + Rust Çekirdeği)";
+    public string EngineStatus => Services.RustBridge.StatusMessage;
     public ObservableCollection<DriveViewModel> Drives { get; } = new();
     public ObservableCollection<RecoverableFile> ScannedFiles { get; } = new();
     public ObservableCollection<RecoverableFile> FilteredFiles { get; } = new();

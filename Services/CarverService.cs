@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Text;
+using System.Text.Json;
 using DataRecoveryApp.Helpers;
 using DataRecoveryApp.Models;
 using Microsoft.Win32.SafeHandles;
@@ -43,8 +45,16 @@ public class CarverService
 
     private List<RecoverableFile> Carve(string driveLetter, CarverSettings settings, IProgress<int>? progress, CancellationToken ct)
     {
-        var results = new List<RecoverableFile>();
         LastError = null;
+        if (RustBridge.IsAvailable)
+        {
+            var native = CarveWithRust(driveLetter, settings, progress, ct);
+            if (native != null) return native;
+            Debug.WriteLine($"[CarverService] Rust taraması başarısız ({LastError}); C# kazıyıcıya dönülüyor.");
+            LastError = null;
+        }
+
+        var results = new List<RecoverableFile>();
         var sigs = AllSignatures.Where(s => s.Ext == "zip" ? settings.AnyZipFamily : settings.IsEnabled(s.Ext)).ToArray();
         if (sigs.Length == 0) { LastError = "Hiç kazıma formatı seçilmedi."; return results; }
 
@@ -96,6 +106,78 @@ public class CarverService
         catch (OperationCanceledException) { throw; }
         catch (UnauthorizedAccessException ex) { LastError = ex.Message; }
         catch (Exception ex) { LastError = $"Kazıma hatası: {ex.Message}"; }
+        return results;
+    }
+
+    /// <summary>
+    /// Rust çekirdeği (re_scan_signatures) ile kazıma. İlerleme re_scan_progress ile yoklanır,
+    /// iptal re_cancel_scan ile iletilir. Aygıt açılamazsa/iç hata olursa null döner (C# yoluna geçilir).
+    /// </summary>
+    private List<RecoverableFile>? CarveWithRust(string driveLetter, CarverSettings settings, IProgress<int>? progress, CancellationToken ct)
+    {
+        var enabled = RustBridge.AllSigs.Where(s => settings.IsEnabled(s.Ext)).Select(s => s.Id).ToArray();
+        if (enabled.Length == 0) { LastError = "Hiç kazıma formatı seçilmedi."; return new List<RecoverableFile>(); }
+
+        long total;
+        try
+        {
+            using var h = WinApiHelper.OpenVolume(driveLetter);
+            total = GetVolumeLength(h, driveLetter);
+        }
+        catch (Exception ex) { LastError = ex.Message; return null; }
+        if (total <= 0) { LastError = "Birim boyutu okunamadı."; return null; }
+
+        string path = $@"\\.\{driveLetter.TrimEnd(':', '\\')}:";
+        string json = JsonSerializer.Serialize(new { enabled, volume_size = total });
+        var results = new List<RecoverableFile>();
+
+        // Callback Rust iş parçacığında (re_scan_signatures'ı çağıran Task) senkron çalışır.
+        // Yerel koda istisna sızmaması için gövde try/catch ile korunur.
+        RustBridge.ScanCallback cb = (offset, sigId, size) =>
+        {
+            try
+            {
+                bool estimated = (sigId & RustBridge.EstimatedFlag) != 0;
+                string ext = RustBridge.ExtensionForSig(sigId);
+                long off = (long)offset;
+                results.Add(new RecoverableFile
+                {
+                    FileName = $"kazinan_{results.Count + 1:D5}.{ext}",
+                    Extension = ext,
+                    Size = (long)size,
+                    SizeIsEstimated = estimated,
+                    Source = RecoverySource.Carved,
+                    DataOffset = off,
+                    StartSector = off / Sector,
+                    FilePath = $"Ofset 0x{off:X} (sektör {off / Sector})",
+                    FileCategory = RecoverableFile.CategoryNameFor(ext),
+                    RecoverabilityPercent = estimated ? 35 : 65,
+                    FileReferenceNumber = offset
+                });
+            }
+            catch (Exception ex) { Debug.WriteLine($"[CarverService] Rust callback hatası: {ex.Message}"); }
+        };
+
+        int rc;
+        using (var done = new ManualResetEventSlim(false))
+        using (ct.Register(RustBridge.re_cancel_scan))
+        {
+            // İlerleme yoklayıcı: Rust tarafı binde cinsinden ilerleme yayınlar.
+            var poller = Task.Run(() =>
+            {
+                while (!done.Wait(250)) progress?.Report((int)Math.Min(100, RustBridge.re_scan_progress() / 10));
+            });
+            try { rc = RustBridge.re_scan_signatures(path, json, cb); }
+            finally { done.Set(); poller.Wait(); GC.KeepAlive(cb); }
+        }
+
+        if (rc == RustBridge.RE_ERR_CANCELLED) throw new OperationCanceledException(ct);
+        if (rc != RustBridge.RE_OK)
+        {
+            LastError = $"Rust çekirdeği: {RustBridge.ErrorText(rc)}";
+            return rc is RustBridge.RE_ERR_NO_SIGNATURES ? results : null;
+        }
+        progress?.Report(100);
         return results;
     }
 

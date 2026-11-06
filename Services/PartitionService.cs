@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using DataRecoveryApp.Helpers;
 using DataRecoveryApp.Models;
@@ -25,6 +26,58 @@ public class PartitionService
         result.BytesPerSector = bps;
         try { result.DiskSize = WinApiHelper.GetLength(h); } catch { result.Warnings.Add("Disk boyutu okunamadı."); }
 
+        if (!(RustBridge.IsAvailable && TryParseWithRust(diskNumber, bps, result)))
+            ParseWithCSharp(h, bps, result);
+        progress?.Report(10);
+
+        if (scanLost && result.DiskSize > 0) FindLost(h, bps, result, progress, ct);
+        progress?.Report(100);
+        return result;
+    }
+
+    /// <summary>
+    /// Bölüm tablosunu Rust çekirdeğiyle (re_parse_partitions) çözümler. Başarısızsa false döner ve
+    /// C# ayrıştırıcısı devreye girer. Kayıp bölüm araması her iki durumda da C# tarafında yapılır.
+    /// </summary>
+    private static bool TryParseWithRust(int diskNumber, int bps, PartitionAnalysisResult result)
+    {
+        try
+        {
+            var table = RustBridge.ParsePartitions($@"\\.\PhysicalDrive{diskNumber}", out int rc);
+            if (table == null)
+            {
+                Debug.WriteLine($"[PartitionService] Rust ayrıştırıcı başarısız: {RustBridge.ErrorText(rc)}; C# ayrıştırıcıya dönülüyor.");
+                return false;
+            }
+            result.PartitionStyle = table.Style;
+            result.Warnings.AddRange(table.Warnings);
+            // Rust GPT'yi 512/4096 sektörle dener; MBR'de 512 varsayar. Windows'un bildirdiği bps farklıysa LBA'lar dönüştürülür.
+            int nativeSs = table.SectorSize > 0 ? table.SectorSize : 512;
+            foreach (var p in table.Partitions)
+            {
+                result.Partitions.Add(new PartitionInfo
+                {
+                    Index = result.Partitions.Count + 1,
+                    Scheme = p.Scheme,
+                    TypeName = p.TypeName,
+                    FileSystem = p.FileSystem,
+                    Name = p.Name,
+                    StartLba = p.StartLba * nativeSs / bps,
+                    SectorCount = p.SectorCount * nativeSs / bps,
+                    BytesPerSector = bps
+                });
+            }
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[PartitionService] Rust çağrısı hata verdi: {ex.Message}; C# ayrıştırıcıya dönülüyor.");
+            return false;
+        }
+    }
+
+    private static void ParseWithCSharp(SafeFileHandle h, int bps, PartitionAnalysisResult result)
+    {
         var mbr = WinApiHelper.ReadAligned(h, 0, bps);
         if (mbr.Length < 512 || mbr[510] != 0x55 || mbr[511] != 0xAA)
         {
@@ -44,11 +97,6 @@ public class PartitionService
         }
 
         foreach (var p in result.Partitions) p.FileSystem = DetectFs(h, p.StartOffset);
-        progress?.Report(10);
-
-        if (scanLost && result.DiskSize > 0) FindLost(h, bps, result, progress, ct);
-        progress?.Report(100);
-        return result;
     }
 
     private static bool ParseGpt(SafeFileHandle h, int bps, PartitionAnalysisResult r)

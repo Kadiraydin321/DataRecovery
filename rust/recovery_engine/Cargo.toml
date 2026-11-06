@@ -1,0 +1,24 @@
+[package]
+name = "recovery_engine"
+version = "1.0.0"
+edition = "2021"
+description = "Veri Kurtarma uygulaması için Rust çekirdeği (imza taraması, bölüm tablosu ayrıştırma, ham sektör okuma)"
+license = "MIT"
+publish = false
+
+[lib]
+name = "recovery_engine"
+crate-type = ["cdylib"]
+
+[dependencies]
+serde = { version = "1", default-features = false, features = ["std", "derive"] }
+serde_json = { version = "1", default-features = false, features = ["std"] }
+libc = { version = "0.2", default-features = false }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+# FFI sınırında catch_unwind kullanıldığı için "unwind" kalmalı (abort olursa panik süreci öldürür)
+panic = "unwind"
+strip = true
