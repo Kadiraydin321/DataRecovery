@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Text;
 using DataRecoveryApp.Helpers;
 using DataRecoveryApp.Models;
 using static DataRecoveryApp.Helpers.WinApiHelper;
@@ -32,12 +31,13 @@ public class NtfsScanner
                 ReasonMask = USN_REASON_FILE_DELETE,
                 UsnJournalID = journal.UsnJournalID
             };
-            const int bufSize = 64 * 1024;
+            const int bufSize = 1024 * 1024; // daha az DeviceIoControl çağrısı
             IntPtr inBuf = Marshal.AllocHGlobal(Marshal.SizeOf<READ_USN_JOURNAL_DATA_V0>());
             IntPtr outBuf = Marshal.AllocHGlobal(bufSize);
             try
             {
                 long range = Math.Max(1, journal.NextUsn - journal.FirstUsn);
+                int lastPct = -1;
                 while (!ct.IsCancellationRequested)
                 {
                     Marshal.StructureToPtr(req, inBuf, false);
@@ -60,7 +60,8 @@ public class NtfsScanner
                     }
                     if (nextUsn <= req.StartUsn) break;
                     req.StartUsn = nextUsn;
-                    progress?.Report((int)Math.Clamp((nextUsn - journal.FirstUsn) * 100 / range, 0, 100));
+                    int pct = (int)Math.Clamp((nextUsn - journal.FirstUsn) * 100 / range, 0, 100);
+                    if (pct != lastPct) { lastPct = pct; progress?.Report(pct); }
                 }
             }
             finally
@@ -94,9 +95,7 @@ public class NtfsScanner
         ushort nameOff = (ushort)Marshal.ReadInt16(rec, 58);
         if ((reason & USN_REASON_FILE_DELETE) == 0 || (attrs & 0x10) != 0) return; // klasörleri atla
 
-        var bytes = new byte[nameLen];
-        Marshal.Copy(rec + nameOff, bytes, 0, nameLen);
-        string name = Encoding.Unicode.GetString(bytes);
+        string name = Marshal.PtrToStringUni(rec + nameOff, nameLen / 2); // ara dizi olmadan
         if (name.StartsWith("~$") || name.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)) return;
 
         string ext = FileTypeHelper.GetExtension(name);

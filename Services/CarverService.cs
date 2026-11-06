@@ -21,6 +21,8 @@ public class CarverService
 
     public string? LastError { get; private set; }
 
+    private static readonly byte[] JpegEoi = { 0xFF, 0xD9 };
+
     private sealed record Sig(string Ext, byte[] Magic, int MagicOffset, long MaxSize);
 
     // Her türün en fazla boyutu (sonlandırıcı bulunamazsa ya da sınırı aşarsa kullanılır).
@@ -302,8 +304,8 @@ public class CarverService
             ct.ThrowIfCancellationRequested();
             var chunk = SafeRead(h, offset + done, (int)Math.Min(ScanChunk, maxSize - done));
             if (chunk.Length < 2) return 0;
-            for (int i = 0; i < chunk.Length - 1; i++)
-                if (chunk[i] == 0xFF && chunk[i + 1] == 0xD9) return done + i + 2;
+            int i = chunk.AsSpan().IndexOf(JpegEoi); // vektörize arama (bayt bayt döngü yerine)
+            if (i >= 0) return done + i + 2;
             if (chunk.Length < ScanChunk) return 0;
         }
         return 0;

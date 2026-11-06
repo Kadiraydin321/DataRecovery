@@ -164,7 +164,10 @@
                 <!-- Dosya listesi DataGrid -->
                 <DataGrid ItemsSource="{Binding FilteredFiles}"
                           SelectedItem="{Binding SelectedFileForPreview, Mode=TwoWay}"
-                          SelectionMode="Single" IsReadOnly="False">
+                          SelectionMode="Single" IsReadOnly="False"
+                          EnableRowVirtualization="True" EnableColumnVirtualization="True"
+                          VirtualizingPanel.IsVirtualizing="True"
+                          VirtualizingPanel.VirtualizationMode="Recycling">
                     <DataGrid.Columns>
                         <DataGridTemplateColumn Header="☑" Width="36">
                             <DataGridTemplateColumn.CellTemplate>

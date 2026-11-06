@@ -11,6 +11,7 @@ namespace DataRecoveryApp.Services;
 public sealed class FileDataReader : IDisposable
 {
     private const int ChunkSize = 1024 * 1024; // 1 MB tamponlu okuma
+    private static readonly byte[] Zeros = new byte[64 * 1024]; // seyrek parçalar için paylaşılan sıfır tamponu
     private readonly SafeFileHandle _h;
     private WinApiHelper.NTFS_VOLUME_DATA_BUFFER? _ntfs;
 
@@ -108,9 +109,8 @@ public sealed class FileDataReader : IDisposable
             if (offBytes == 0) // seyrek (sparse) parça: sıfırlarla doldur
             {
                 long z = Math.Min(runBytes, remaining);
-                var zeros = new byte[(int)Math.Min(z, ChunkSize)];
-                for (long left = z; left > 0; left -= zeros.Length)
-                    dst.Write(zeros, 0, (int)Math.Min(left, zeros.Length));
+                for (long left = z; left > 0; left -= Zeros.Length)
+                    dst.Write(Zeros, 0, (int)Math.Min(left, Zeros.Length));
                 written += z; remaining -= z;
                 continue;
             }

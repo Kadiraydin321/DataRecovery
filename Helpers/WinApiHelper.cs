@@ -200,6 +200,16 @@ public static class WinApiHelper
         return buf.AsSpan(skip, avail).ToArray();
     }
 
+    /// <summary>Var olan tampona okur (döngülerde her seferinde yeni dizi ayırmamak için). Okunan bayt sayısını döndürür.</summary>
+    public static int ReadInto(SafeFileHandle h, long byteOffset, byte[] buffer, int length)
+    {
+        if (!SetFilePointerEx(h, byteOffset, out _, 0))
+            throw new Win32Exception(Marshal.GetLastWin32Error());
+        if (!ReadFile(h, buffer, (uint)length, out uint read, IntPtr.Zero))
+            throw new Win32Exception(Marshal.GetLastWin32Error());
+        return (int)read;
+    }
+
     /// <summary>Belirtilen bayt ofsetinden (sektör hizalı) okuma yapar.</summary>
     public static byte[] ReadSectors(SafeFileHandle h, long byteOffset, int length)
     {

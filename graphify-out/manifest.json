@@ -1,0 +1,236 @@
+{
+  "App.xaml": {
+    "mtime": 1793987886.400472,
+    "seen": 1793990281.048228,
+    "ast_hash": "3e61e959bd66738fc0eb190cf1b69437",
+    "semantic_hash": ""
+  },
+  "App.xaml.cs": {
+    "mtime": 1793986014.600907,
+    "seen": 1793990281.0482318,
+    "ast_hash": "e3bc81d90a43d676e58c26e990b434e9",
+    "semantic_hash": ""
+  },
+  "Converters/BitmapToImageSourceConverter.cs": {
+    "mtime": 1793988404.0328689,
+    "seen": 1793990281.0482335,
+    "ast_hash": "7e39d60c06846e4349af4ec38db6d593",
+    "semantic_hash": ""
+  },
+  "Converters/FileCategoryIconConverter.cs": {
+    "mtime": 1793986048.6151032,
+    "seen": 1793990281.0482347,
+    "ast_hash": "5c627d29e932d0183124e0f727fbab86",
+    "semantic_hash": ""
+  },
+  "Converters/PreviewTypeToVisibilityConverter.cs": {
+    "mtime": 1793987612.4061902,
+    "seen": 1793990281.048236,
+    "ast_hash": "ce68c287a5711e20c5986c32f1621f36",
+    "semantic_hash": ""
+  },
+  "Converters/RecoverabilityColorConverter.cs": {
+    "mtime": 1793986048.6376724,
+    "seen": 1793990281.0482368,
+    "ast_hash": "ae7fa8134d7f09b9263f7a8e65d1feb2",
+    "semantic_hash": ""
+  },
+  "DataRecoveryApp.csproj": {
+    "mtime": 1793989758.577777,
+    "seen": 1793990281.048238,
+    "ast_hash": "3da97cc4da53e23b14b3b68d22be6771",
+    "semantic_hash": ""
+  },
+  "GlobalUsings.cs": {
+    "mtime": 1793986058.3378735,
+    "seen": 1793990281.04824,
+    "ast_hash": "283e5d75d9ccd34fc708d620c8d17df9",
+    "semantic_hash": ""
+  },
+  "Helpers/FileSizeHelper.cs": {
+    "mtime": 1793985797.012915,
+    "seen": 1793990281.0482416,
+    "ast_hash": "9dc216041c754630d2e25bb35f9cd2d4",
+    "semantic_hash": ""
+  },
+  "Helpers/ObservableObject.cs": {
+    "mtime": 1793985796.9616437,
+    "seen": 1793990281.048243,
+    "ast_hash": "698a68a1002ff5ea74e937cc7907e25b",
+    "semantic_hash": ""
+  },
+  "Helpers/RelayCommand.cs": {
+    "mtime": 1793985796.9875088,
+    "seen": 1793990281.048244,
+    "ast_hash": "69266cf90831739082eb7ed2478b4fcd",
+    "semantic_hash": ""
+  },
+  "Helpers/WinApiHelper.cs": {
+    "mtime": 1793990372.5701034,
+    "seen": 1793990455.3885393,
+    "ast_hash": "083d40f21f18157cfbd7e5e6ab6cad5a",
+    "semantic_hash": ""
+  },
+  "MainWindow.xaml": {
+    "mtime": 1793990365.3647501,
+    "seen": 1793990455.3885405,
+    "ast_hash": "12826a425c6f776499b28b69ef0f7117",
+    "semantic_hash": ""
+  },
+  "MainWindow.xaml.cs": {
+    "mtime": 1793986014.6254048,
+    "seen": 1793990281.0482469,
+    "ast_hash": "6c82f6712ab256d16ed9339b74d49360",
+    "semantic_hash": ""
+  },
+  "Models/DriveInfoModel.cs": {
+    "mtime": 1793985933.775199,
+    "seen": 1793990281.0482478,
+    "ast_hash": "7af650e42cb2bc9a0fa0c327a94e534d",
+    "semantic_hash": ""
+  },
+  "Models/PartitionInfo.cs": {
+    "mtime": 1793988335.8629713,
+    "seen": 1793990281.0482485,
+    "ast_hash": "a2d0265987cee6f821225bc23ba86f7a",
+    "semantic_hash": ""
+  },
+  "Models/PreviewData.cs": {
+    "mtime": 1793990390.4909399,
+    "seen": 1793990455.3885443,
+    "ast_hash": "155fc20d168c0c5f0d0332c734ad27a9",
+    "semantic_hash": ""
+  },
+  "Models/RecoverableFile.cs": {
+    "mtime": 1793988127.4212892,
+    "seen": 1793990281.0482504,
+    "ast_hash": "18ea76e3be2a68849f2e839fb436053b",
+    "semantic_hash": ""
+  },
+  "Services/CarverService.cs": {
+    "mtime": 1793990416.8079011,
+    "seen": 1793990455.388546,
+    "ast_hash": "071bea3260a9dbcb782c0dfcacaf0cf2",
+    "semantic_hash": ""
+  },
+  "Services/DiskImageService.cs": {
+    "mtime": 1793990390.4941685,
+    "seen": 1793990455.3885467,
+    "ast_hash": "cd937d1a1a60dddce16bf9316b84eddf",
+    "semantic_hash": ""
+  },
+  "Services/DiskScannerService.cs": {
+    "mtime": 1793985967.2337005,
+    "seen": 1793990281.0482533,
+    "ast_hash": "e0bb66fd323d475d0e076e29003ad937",
+    "semantic_hash": ""
+  },
+  "Services/Fat32Scanner.cs": {
+    "mtime": 1793988263.0908623,
+    "seen": 1793990281.048254,
+    "ast_hash": "e50501dd06d1bb4fdec3450df99bf10a",
+    "semantic_hash": ""
+  },
+  "Services/FileDataReader.cs": {
+    "mtime": 1793990416.8080447,
+    "seen": 1793990455.3885496,
+    "ast_hash": "3762b28aed1be872ca3c4b0398a52897",
+    "semantic_hash": ""
+  },
+  "Services/NtfsScanner.cs": {
+    "mtime": 1793990406.0305655,
+    "seen": 1793990455.3885508,
+    "ast_hash": "819e400e398e745e0fa75883f653657c",
+    "semantic_hash": ""
+  },
+  "Services/PartitionService.cs": {
+    "mtime": 1793989758.577598,
+    "seen": 1793990281.0482574,
+    "ast_hash": "761c275688f9c855f1ac5a4f18107991",
+    "semantic_hash": ""
+  },
+  "Services/PreviewService.cs": {
+    "mtime": 1793988287.5748277,
+    "seen": 1793990281.048258,
+    "ast_hash": "da277b193e035e66c8d93e627f650e69",
+    "semantic_hash": ""
+  },
+  "Services/RecoveryService.cs": {
+    "mtime": 1793990416.8081126,
+    "seen": 1793990455.3885534,
+    "ast_hash": "00ed6f32901e731cc5598a3589406712",
+    "semantic_hash": ""
+  },
+  "Services/ReportService.cs": {
+    "mtime": 1793988355.4265964,
+    "seen": 1793990281.0482597,
+    "ast_hash": "745e08276585816f7da1a950375a2759",
+    "semantic_hash": ""
+  },
+  "Services/RustBridge.cs": {
+    "mtime": 1793989720.8279662,
+    "seen": 1793990281.0482607,
+    "ast_hash": "87973cb916802d8a93d6eb788782b84f",
+    "semantic_hash": ""
+  },
+  "ViewModels/DriveViewModel.cs": {
+    "mtime": 1793985967.2923117,
+    "seen": 1793990281.0482614,
+    "ast_hash": "c4858d700044facf8841ca713a2495db",
+    "semantic_hash": ""
+  },
+  "ViewModels/MainViewModel.cs": {
+    "mtime": 1793990398.7973115,
+    "seen": 1793990455.3885572,
+    "ast_hash": "1408a451174a8e8de18fb4cb04f458a0",
+    "semantic_hash": ""
+  },
+  "rust/recovery_engine/Cargo.toml": {
+    "mtime": 1793990422.3544097,
+    "seen": 1793990455.3885584,
+    "ast_hash": "1450873277e7e686132a5cf3a4703bab",
+    "semantic_hash": ""
+  },
+  "rust/recovery_engine/src/lib.rs": {
+    "mtime": 1793989648.6928072,
+    "seen": 1793990281.0482643,
+    "ast_hash": "fd6acb76dd8d85dcd24df32af723eb12",
+    "semantic_hash": ""
+  },
+  "rust/recovery_engine/src/partition.rs": {
+    "mtime": 1793989476.1621213,
+    "seen": 1793990281.0482652,
+    "ast_hash": "27b711bb3f1365147615355a5f482971",
+    "semantic_hash": ""
+  },
+  "rust/recovery_engine/src/reader.rs": {
+    "mtime": 1793989350.2584221,
+    "seen": 1793990281.048266,
+    "ast_hash": "2df1878049aca143db51cd558a02508e",
+    "semantic_hash": ""
+  },
+  "rust/recovery_engine/src/scanner.rs": {
+    "mtime": 1793990422.354939,
+    "seen": 1793990455.3885624,
+    "ast_hash": "9161e3243af032ffc96916da92df513c",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1793989785.9970486,
+    "seen": 1793990281.0482678,
+    "ast_hash": "10e5a308b9879199cdc7efed1d77fafb",
+    "semantic_hash": ""
+  },
+  "docs/RUST_CORE_PLAN.md": {
+    "mtime": 1793989818.0699902,
+    "seen": 1793990281.0482686,
+    "ast_hash": "e1875185744f31cfe96f1e0b83b28db6",
+    "semantic_hash": ""
+  },
+  "Helpers/BulkObservableCollection.cs": {
+    "mtime": 1793990337.7263427,
+    "seen": 1793990455.3885343,
+    "ast_hash": "7e988f7a206d2e7e74895de33600b9fe",
+    "semantic_hash": ""
+  }
+}

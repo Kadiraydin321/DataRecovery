@@ -30,13 +30,14 @@ public class MainViewModel : ObservableObject
     private RecoverableFile? _selectedFileForPreview;
     private PreviewData? _currentPreview;
     private CarverSettings _carverSettings = new();
+    private int _selectedCount; // CanExecute'ta O(n) tarama yerine sayaç
 
     public MainViewModel()
     {
         StartScanCommand = new RelayCommand(async () => await StartScanAsync(), () => CanScan);
         CancelScanCommand = new RelayCommand(() => _cts?.Cancel(), () => IsScanning);
         RecoverCommand = new RelayCommand(async () => await RecoverAsync(),
-            () => !IsScanning && ScannedFiles.Any(f => f.IsSelected));
+            () => !IsScanning && _selectedCount > 0);
         SelectAllCommand = new RelayCommand(() => SetSelection(true), () => FilteredFiles.Count > 0);
         ClearSelectionCommand = new RelayCommand(() => SetSelection(false), () => FilteredFiles.Count > 0);
         BrowseDestinationCommand = new RelayCommand(BrowseDestination);
@@ -54,8 +55,8 @@ public class MainViewModel : ObservableObject
     public string AppVersion => "v0.3.1 (Faz 3 + Rust Çekirdeği)";
     public string EngineStatus => Services.RustBridge.StatusMessage;
     public ObservableCollection<DriveViewModel> Drives { get; } = new();
-    public ObservableCollection<RecoverableFile> ScannedFiles { get; } = new();
-    public ObservableCollection<RecoverableFile> FilteredFiles { get; } = new();
+    public BulkObservableCollection<RecoverableFile> ScannedFiles { get; } = new();
+    public BulkObservableCollection<RecoverableFile> FilteredFiles { get; } = new();
     public string[] Categories { get; } = { "Hepsi", "Resimler", "Belgeler", "Videolar", "Müzik", "Diğer" };
 
     public DriveViewModel? SelectedDrive
@@ -121,7 +122,7 @@ public class MainViewModel : ObservableObject
     public ICommand ClosePartitionPanelCommand { get; }
     public ICommand ExportReportCommand { get; }
 
-    public ObservableCollection<PartitionInfo> Partitions { get; } = new();
+    public BulkObservableCollection<PartitionInfo> Partitions { get; } = new();
     public bool ShowPartitionPanel { get => _showPartitionPanel; set => SetProperty(ref _showPartitionPanel, value); }
     public string PartitionSummary { get => _partitionSummary; set => SetProperty(ref _partitionSummary, value); }
 
@@ -142,15 +143,13 @@ public class MainViewModel : ObservableObject
         _cts = new CancellationTokenSource();
         IsScanning = true;
         ScanProgress = 0;
-        ScannedFiles.Clear();
-        FilteredFiles.Clear();
+        ClearResults();
         StatusMessage = $"{SelectedDrive.Drive.Letter}:\\ taranıyor...";
         var progress = new Progress<int>(p => ScanProgress = p);
         try
         {
             var files = await _scanner.ScanDriveAsync(SelectedDrive.Drive, progress, _cts.Token);
-            foreach (var f in files.OrderByDescending(f => f.DeletedDate)) ScannedFiles.Add(f);
-            ApplyFilter();
+            AddResults(files.OrderByDescending(f => f.DeletedDate));
             if (_scanner.AccessDenied)
                 StatusMessage = "Yönetici izni gerekiyor. Uygulamayı 'Yönetici olarak çalıştır' ile açın.";
             else if (_scanner.LastError != null && files.Count == 0)
@@ -180,8 +179,7 @@ public class MainViewModel : ObservableObject
         try
         {
             var files = await _carver.CarveAsync(SelectedDrive.Drive.Letter, CarverSettings, progress, _cts.Token);
-            foreach (var f in files.OrderByDescending(f => f.Size)) ScannedFiles.Add(f);
-            ApplyFilter();
+            AddResults(files.OrderByDescending(f => f.Size));
             StatusMessage = files.Count == 0 && _carver.LastError != null
                 ? _carver.LastError
                 : $"Kazıma tamamlandı: {files.Count} dosya bulundu (boyutları sonlandırıcı/başlık bilgisinden belirlendi).";
@@ -206,16 +204,21 @@ public class MainViewModel : ObservableObject
         _cts = new CancellationTokenSource();
         IsScanning = true;
         StatusMessage = $"{SelectedDrive.Drive.Letter}:\\ imajı oluşturuluyor...";
+        long badBytes = 0;
         var progress = new Progress<DiskImageProgress>(p => 
         {
             ScanProgress = p.Percent;
-            StatusMessage = $"İmaj oluşturuluyor... {FileSizeHelper.Format(p.BytesRead)} / {FileSizeHelper.Format(p.TotalBytes)}";
+            badBytes = p.BadBytes;
+            StatusMessage = $"İmaj oluşturuluyor... {FileSizeHelper.Format(p.BytesRead)} / {FileSizeHelper.Format(p.TotalBytes)}"
+                + (p.BadBytes > 0 ? $" — okunamayan: {FileSizeHelper.Format(p.BadBytes)}" : "");
         });
 
         try
         {
             bool success = await _imageService.CreateImageAsync(SelectedDrive.Drive.Letter, dlg.FileName, progress, _cts.Token);
-            StatusMessage = success ? $"İmaj başarıyla oluşturuldu: {dlg.FileName}" : "İmaj oluşturma başarısız.";
+            StatusMessage = !success ? "İmaj oluşturma başarısız."
+                : badBytes > 0 ? $"İmaj oluşturuldu: {dlg.FileName} (okunamayan {FileSizeHelper.Format(badBytes)} sıfırla dolduruldu)"
+                : $"İmaj başarıyla oluşturuldu: {dlg.FileName}";
             ScanProgress = 100;
         }
         catch (OperationCanceledException) { StatusMessage = "İmaj oluşturma iptal edildi."; }
@@ -230,7 +233,7 @@ public class MainViewModel : ObservableObject
 
     private async Task RecoverAsync()
     {
-        var selected = ScannedFiles.Where(f => f.IsSelected).ToList();
+        var selected = ScannedFiles.Where(f => f.IsSelected).ToList(); // yalnızca komut çalışınca bir kez
         if (selected.Count == 0) { StatusMessage = "Kurtarılacak dosya seçilmedi."; return; }
         if (string.IsNullOrWhiteSpace(DestinationPath)) { StatusMessage = "Hedef klasör seçilmedi."; return; }
         if (SelectedDrive == null) return;
@@ -296,7 +299,7 @@ public class MainViewModel : ObservableObject
         try
         {
             var r = await _partitionService.AnalyzeAsync(disk, true, progress, _cts.Token);
-            foreach (var p in r.Partitions.OrderBy(p => p.StartLba)) Partitions.Add(p);
+            Partitions.ReplaceAll(r.Partitions.OrderBy(p => p.StartLba));
             PartitionSummary = r.Summary + (r.Warnings.Count > 0 ? "\n⚠ " + string.Join("\n⚠ ", r.Warnings) : "");
             StatusMessage = $"Bölüm analizi tamamlandı: {r.Partitions.Count(p => !p.IsLost)} bölüm, {r.Partitions.Count(p => p.IsLost)} kayıp bölüm adayı.";
             ScanProgress = 100;
@@ -348,8 +351,37 @@ public class MainViewModel : ObservableObject
 
     private void SetSelection(bool value)
     {
-        foreach (var f in FilteredFiles) f.IsSelected = value;
+        foreach (var f in FilteredFiles) f.IsSelected = value; // sayaç OnFilePropertyChanged ile güncellenir
+    }
+
+    private void ClearResults()
+    {
+        foreach (var f in ScannedFiles) f.PropertyChanged -= OnFilePropertyChanged;
+        ScannedFiles.ReplaceAll(Array.Empty<RecoverableFile>());
+        FilteredFiles.ReplaceAll(Array.Empty<RecoverableFile>());
+        _selectedCount = 0;
         RelayCommand.Refresh();
+    }
+
+    /// <summary>Sonuçları tek bildirimle ekler (öğe başına UI güncellemesi yok).</summary>
+    private void AddResults(IEnumerable<RecoverableFile> files)
+    {
+        var list = files.ToList();
+        foreach (var f in list)
+        {
+            f.PropertyChanged += OnFilePropertyChanged;
+            if (f.IsSelected) _selectedCount++;
+        }
+        ScannedFiles.AddRange(list);
+        ApplyFilter();
+    }
+
+    private void OnFilePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(RecoverableFile.IsSelected) || sender is not RecoverableFile f) return;
+        int before = _selectedCount;
+        _selectedCount = Math.Max(0, _selectedCount + (f.IsSelected ? 1 : -1));
+        if ((before == 0) != (_selectedCount == 0)) RelayCommand.Refresh(); // yalnızca 0 sınırında
     }
 
     private void ApplyFilter()
@@ -363,8 +395,7 @@ public class MainViewModel : ObservableObject
             "Diğer" => "Diğer",
             _ => null
         };
-        FilteredFiles.Clear();
-        foreach (var f in ScannedFiles.Where(f => cat == null || f.FileCategory == cat)) FilteredFiles.Add(f);
+        FilteredFiles.ReplaceAll(cat == null ? ScannedFiles : ScannedFiles.Where(f => f.FileCategory == cat));
         RelayCommand.Refresh();
     }
 }

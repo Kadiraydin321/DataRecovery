@@ -64,8 +64,13 @@ public class RecoveryService
             name += "." + file.Extension;
         string outPath = UniquePath(Path.Combine(dest, name));
         long written;
-        using (var fs = File.Create(outPath))
+        using (var fs = new FileStream(outPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 1 << 20))
+        {
+            // Boyut biliniyorsa yer önceden ayrılır (hedefte parçalanma ve yeniden boyutlama azalır)
+            if (file.Size > 0) try { fs.SetLength(file.Size); } catch { }
             written = reader.CopyTo(file, fs, long.MaxValue, ct);
+            if (written > 0 && fs.Length != written) fs.SetLength(written); // kısa okumada fazlayı kes
+        }
         if (written > 0) return true;
         File.Delete(outPath);
         return false;

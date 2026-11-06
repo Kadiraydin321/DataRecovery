@@ -14,6 +14,8 @@ public class DiskImageProgress
 {
     public long BytesRead { get; set; }
     public long TotalBytes { get; set; }
+    /// <summary>Okunamayıp sıfırla doldurulan bayt sayısı (bozuk sektörler).</summary>
+    public long BadBytes { get; set; }
     public int Percent => TotalBytes == 0 ? 0 : (int)(BytesRead * 100 / TotalBytes);
 }
 

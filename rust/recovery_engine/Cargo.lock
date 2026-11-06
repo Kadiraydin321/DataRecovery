@@ -43,6 +43,7 @@ name = "recovery_engine"
 version = "1.0.0"
 dependencies = [
  "libc",
+ "memchr",
  "serde",
  "serde_json",
 ]
