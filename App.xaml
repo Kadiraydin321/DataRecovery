@@ -8,16 +8,32 @@
         <SolidColorBrush x:Key="PanelBrush" Color="#252535"/>
         <SolidColorBrush x:Key="AccentBrush" Color="#7C6AF7"/>
         <SolidColorBrush x:Key="AccentHoverBrush" Color="#9686FA"/>
+        <SolidColorBrush x:Key="GreenBrush" Color="#2ECC71"/>
+        <SolidColorBrush x:Key="OrangeBrush" Color="#E67E22"/>
         <SolidColorBrush x:Key="TextBrush" Color="#E0E0F0"/>
         <SolidColorBrush x:Key="MutedBrush" Color="#9090B0"/>
         <SolidColorBrush x:Key="BorderBrush" Color="#3A3A5C"/>
 
         <conv:RecoverabilityColorConverter x:Key="RecoverabilityColor"/>
         <conv:FileCategoryIconConverter x:Key="CategoryIcon"/>
+        <conv:PreviewTypeToVisibilityConverter x:Key="PreviewVis"/>
+        <conv:BitmapToImageSourceConverter x:Key="BitmapToImg"/>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
 
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        </Style>
+
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="Margin" Value="2,2"/>
+        </Style>
+
+        <Style TargetType="GroupBox">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="Padding" Value="6"/>
+            <Setter Property="Margin" Value="3"/>
         </Style>
 
         <Style TargetType="Button">
@@ -50,15 +66,13 @@
             <Setter Property="Background" Value="{StaticResource BorderBrush}"/>
         </Style>
 
+        <Style x:Key="GreenButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#27AE60"/>
+        </Style>
+
         <Style TargetType="ListBox">
             <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
             <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
-        </Style>
-
-        <Style TargetType="ComboBox">
-            <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
-            <Setter Property="Foreground" Value="Black"/>
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
         </Style>
 
