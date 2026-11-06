@@ -1,0 +1,137 @@
+<Window x:Class="DataRecoveryApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:DataRecoveryApp.ViewModels"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
+        Title="Veri Kurtarma" Height="680" Width="1100" MinWidth="850" MinHeight="500"
+        Background="{StaticResource BgBrush}" WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Üst bar -->
+        <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="16,10">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="🔍 Veri Kurtarma" FontSize="20" FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding AppVersion}" Foreground="{StaticResource MutedBrush}" Margin="10,0,0,2" VerticalAlignment="Bottom"/>
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="1" Margin="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="220"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Sol panel -->
+            <Border Grid.Column="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,10,0">
+                <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="2,0,0,6">
+                        <Button DockPanel.Dock="Right" Content="⟳" ToolTip="Sürücüleri yenile" Padding="8,2" Style="{StaticResource SecondaryButton}" Command="{Binding RefreshDrivesCommand}"/>
+                        <TextBlock Text="Sürücüler" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </DockPanel>
+                    <StackPanel DockPanel.Dock="Bottom">
+                        <Button Content="▶ Tara" Command="{Binding StartScanCommand}"/>
+                        <Button Content="✖ İptal" Style="{StaticResource SecondaryButton}" Command="{Binding CancelScanCommand}"/>
+                    </StackPanel>
+                    <ListBox ItemsSource="{Binding Drives}" SelectedItem="{Binding SelectedDrive, Mode=TwoWay}"
+                             BorderThickness="0" Margin="0,0,0,8" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:DriveViewModel}">
+                                <StackPanel Margin="2,4">
+                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
+                                    <TextBlock Text="{Binding DisplayText}" FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+
+            <!-- Orta panel -->
+            <DockPanel Grid.Column="1">
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <Button Content="Tümünü Seç" Style="{StaticResource SecondaryButton}" Command="{Binding SelectAllCommand}"/>
+                        <Button Content="Seçimi Temizle" Style="{StaticResource SecondaryButton}" Command="{Binding ClearSelectionCommand}"/>
+                    </StackPanel>
+                    <WrapPanel>
+                        <Button Content="Hepsi" Command="{Binding SetCategoryCommand}" CommandParameter="Hepsi"/>
+                        <Button Content="🖼 Resimler" Command="{Binding SetCategoryCommand}" CommandParameter="Resimler"/>
+                        <Button Content="📄 Belgeler" Command="{Binding SetCategoryCommand}" CommandParameter="Belgeler"/>
+                        <Button Content="🎬 Videolar" Command="{Binding SetCategoryCommand}" CommandParameter="Videolar"/>
+                        <Button Content="🎵 Müzik" Command="{Binding SetCategoryCommand}" CommandParameter="Müzik"/>
+                        <Button Content="📁 Diğer" Command="{Binding SetCategoryCommand}" CommandParameter="Diğer"/>
+                        <TextBlock VerticalAlignment="Center" Margin="10,0,0,0" Foreground="{StaticResource MutedBrush}">
+                            <Run Text="Filtre:"/> <Run Text="{Binding SelectedCategory, Mode=OneWay}"/>
+                        </TextBlock>
+                    </WrapPanel>
+                </DockPanel>
+
+                <DataGrid ItemsSource="{Binding FilteredFiles}" SelectionMode="Extended" IsReadOnly="False">
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Header="☑" Width="40">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Dosya Adı" Width="*" SortMemberPath="FileName">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Margin="4,2">
+                                        <TextBlock Text="{Binding FileCategory, Converter={StaticResource CategoryIcon}}" Margin="0,0,6,0"/>
+                                        <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Tür" Binding="{Binding FileCategory}" Width="80" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Boyut" Binding="{Binding SizeText}" Width="90" IsReadOnly="True" SortMemberPath="Size"/>
+                        <DataGridTextColumn Header="Tarih" Binding="{Binding DateText}" Width="130" IsReadOnly="True" SortMemberPath="DeletedDate"/>
+                        <DataGridTemplateColumn Header="Kurtarılabilirlik" Width="120" SortMemberPath="RecoverabilityPercent">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding RecoverabilityPercent, StringFormat={}%{0}}" FontWeight="SemiBold" HorizontalAlignment="Center"
+                                               Foreground="{Binding RecoverabilityPercent, Converter={StaticResource RecoverabilityColor}}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </DockPanel>
+        </Grid>
+
+        <!-- Alt panel -->
+        <Border Grid.Row="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="12,8">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <ProgressBar Grid.Row="0" Minimum="0" Maximum="100" Value="{Binding ScanProgress, Mode=OneWay}"/>
+                <TextBlock Grid.Row="1" Text="{Binding StatusMessage}" Margin="0,6" TextWrapping="Wrap"/>
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Hedef klasör:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBox Grid.Column="1" Text="{Binding DestinationPath, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center"/>
+                    <Button Grid.Column="2" Content="Gözat" Style="{StaticResource SecondaryButton}" Command="{Binding BrowseDestinationCommand}"/>
+                    <Button Grid.Column="3" Content="Seçilenleri Kurtar 💾" Command="{Binding RecoverCommand}" FontWeight="SemiBold"/>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
