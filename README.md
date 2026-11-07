@@ -118,3 +118,8 @@ native/x64/  recovery_engine.dll (çapraz derlenmiş)
 docs/        RUST_CORE_PLAN.md (Rust çekirdeği mimarisi ve C ABI)
 graphify-out/ Kod bağımlılık haritası (graph.html, GRAPH_REPORT.md)
 ```
+
+
+## Lisans
+[MIT](LICENSE) © 2026 Kadiraydin321 — yazılım "olduğu gibi" sunulur, hiçbir garanti verilmez.
+Veri kaybından doğabilecek zararlardan geliştirici sorumlu tutulamaz.

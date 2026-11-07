@@ -13,6 +13,9 @@
     <!-- Linux/macOS üzerinde de derlenebilmesi için -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <Version>0.3.1</Version>
+    <Authors>Kadiraydin321</Authors>
+    <Copyright>Copyright (c) 2026 Kadiraydin321</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Product>Veri Kurtarma</Product>
     <Description>Silinen dosyaları kurtarma aracı (Faz 3 + Rust çekirdeği)</Description>
   </PropertyGroup>
