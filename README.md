@@ -35,8 +35,8 @@ Windows için C# + WPF (.NET 8) ile geliştirilen, koyu temalı, Türkçe arayü
 Komut İstemi'ni (cmd) veya PowerShell'i **Yönetici olarak** açın:
 
 ```powershell
-git clone https://github.com/<kullanici>/<repo>.git
-cd <repo>
+git clone https://github.com/Kadiraydin321/DataRecovery.git
+cd DataRecovery
 dotnet run
 ```
 
