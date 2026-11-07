@@ -23,15 +23,20 @@ Windows için C# + WPF (.NET 8) ile geliştirilen, koyu temalı, Türkçe arayü
 ## Windows'ta çalıştırma
 
 ### 1. Gereksinimler
-- Windows 10 / 11 (64 bit)
-- Geliştirme ve derleme için: [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-- Yalnızca hazır derlenmiş uygulamayı çalıştırmak için: **.NET 8 Desktop Runtime** (tek dosyalı, self-contained yayın kullanılırsa gerekmez)
+| Bileşen | Ne zaman gerekli | Not |
+|---|---|---|
+| Windows 10 / 11 (64 bit) | Her zaman | Ham disk erişimi için **yönetici** hesabı |
+| [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) | Kaynaktan derleme | `dotnet --version` → `8.x` |
+| .NET 8 **Desktop Runtime** | Yalnızca hazır (framework-dependent) .exe çalıştırma | Self-contained yayında gerekmez |
+| [Git](https://git-scm.com/download/win) | Depoyu klonlama | — |
+| [Rust (rustup)](https://rustup.rs) | **İsteğe bağlı** — yalnızca Rust DLL'ini yeniden derlemek için | Hazır DLL depoda var; MSVC için *Visual Studio Build Tools (C++)* gerekir |
 
 ### 2. Kaynaktan çalıştırma
 Komut İstemi'ni (cmd) veya PowerShell'i **Yönetici olarak** açın:
 
 ```powershell
-cd DataRecoveryApp
+git clone https://github.com/<kullanici>/<repo>.git
+cd <repo>
 dotnet run
 ```
 
@@ -65,7 +70,24 @@ cargo test                                              # birim testleri (yerel)
 cargo build --target x86_64-pc-windows-gnu --release
 cp target/x86_64-pc-windows-gnu/release/recovery_engine.dll ../../native/x64/
 ```
-Windows'ta doğrudan MSVC ile: `cargo build --release` → `target\release\recovery_engine.dll` dosyasını `native\x64\` içine kopyalayın.
+Windows'ta doğrudan MSVC ile (PowerShell):
+```powershell
+rustup default stable-x86_64-pc-windows-msvc
+cd rust\recovery_engine
+cargo test --release
+cargo build --release
+copy target\release\recovery_engine.dll ..\..\native\x64\
+```
+
+## Performans notları (v0.3.1)
+- Sonuç listeleri `BulkObservableCollection` ile tek bildirimle güncellenir; DataGrid satır/sütun sanallaştırması açıktır.
+- Disk imajı 4 MB'lık yeniden kullanılan tamponla alınır; okunamayan bölgeler 4 KB'lık parçalarla yeniden denenir, olmazsa sıfırla doldurulur ve okunamayan bayt sayısı raporlanır.
+- NTFS USN okuması 1 MB tamponla, Rust taraması `memchr` (memmem) ile yapılır.
+- Bu iyileştirmelerin hız kazancı **ölçülmedi**.
+
+## Kod haritası
+`graphify-out/graph.html` tarayıcıda açılarak dosyalar/sınıflar arası bağımlılık grafiği incelenebilir
+(`graphify-out/GRAPH_REPORT.md` özet rapor). Yenilemek için: `pip install graphifyy && graphify update .`
 
 ## Kullanım ipuçları
 1. Veri kaybı fark edilir edilmez o sürücüye **yazmayı bırakın**.
@@ -86,12 +108,13 @@ Windows'ta doğrudan MSVC ile: `cargo build --release` → `target\release\recov
 ```
 Models/      RecoverableFile, DriveInfoModel, PreviewData/CarverSettings, PartitionInfo
 Services/    NtfsScanner, Fat32Scanner, CarverService, FileDataReader, RecoveryService,
-             PreviewService, PartitionService, DiskImageService, ReportService, DiskScannerService
+             PreviewService, PartitionService, DiskImageService, ReportService, DiskScannerService,
+             RustBridge (Rust çekirdeği P/Invoke katmanı)
 ViewModels/  MainViewModel, DriveViewModel
-Helpers/     WinApiHelper (P/Invoke), FileSizeHelper, ObservableObject, RelayCommand
+Helpers/     WinApiHelper (P/Invoke), BulkObservableCollection, FileSizeHelper, ObservableObject, RelayCommand
 Converters/  WPF değer dönüştürücüleri
-Services/    RustBridge (Rust çekirdeği P/Invoke katmanı)
 rust/        recovery_engine — Rust çekirdeği (lib.rs, scanner.rs, partition.rs, reader.rs)
 native/x64/  recovery_engine.dll (çapraz derlenmiş)
 docs/        RUST_CORE_PLAN.md (Rust çekirdeği mimarisi ve C ABI)
+graphify-out/ Kod bağımlılık haritası (graph.html, GRAPH_REPORT.md)
 ```
